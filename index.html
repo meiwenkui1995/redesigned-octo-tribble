@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出差行程记录器</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { padding: 15px; background-color: #f8f9fa; color: #333; margin: 0; font-size: 15px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        h1 { color: #333; text-align: center; margin-bottom: 25px; font-size: 1.8rem; }
+        h2 { color: #444; font-size: 1.4rem; margin-top: 0; }
+        
+        /* 表单样式 */
+        .form-section {
+            background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px;
+        }
+        .form-row {
+            display: flex; flex-wrap: wrap; margin: 0 -10px; 
+            gap: 15px;
+        }
+        .form-group {
+            flex: 1 1 200px; padding: 0 10px; margin-bottom: 15px;
+        }
+        label {
+            display: block; margin-bottom: 5px; font-weight: 500;
+            color: #444; font-size: 0.95rem;
+        }
+        input, select {
+            width: 100%; padding: 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 1rem; background: white;
+        }
+        input:focus { border-color: #007AFF; outline: none; box-shadow: 0 0 0 3px rgba(0,122,255,0.15); }
+        
+        /* 按钮样式 */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #007AFF; color: white; border: none; padding: 14px 20px;
+            border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 500;
+            transition: all 0.2s ease; margin: 5px 0;
+        }
+        .btn:hover, .btn:focus { background: #0062CC; transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+        .btn-calc { background: #28a745; }
+        .btn-calc:hover { background: #218838; }
+        .btn-edit { background: #17a2b8; }
+        .btn-delete { background: #dc3545; }
+        .btn-delete:hover { background: #b32735; }
+        .btn-cancel { background: #6c757d; }
+        .btn-secondary { background: #6c757d; }
+        .btn-group { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+        
+        /* 结果表格样式 */
+        .table-section { overflow-x: auto; margin-top: 25px; }
+        table {
+            width: 100%; border-collapse: collapse; 
+            background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-radius: 8px; overflow: hidden; font-size: 0.95rem;
+        }
+        th, td {
+            padding: 14px 15px; text-align: left; 
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #007AFF; color: white; font-weight: 500;
+            position: sticky; top: 0;
+        }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #edf2ff; }
+        .action-cell { white-space: nowrap; }
+        .action-btn { 
+            padding: 8px 12px; font-size: 14px; margin: 2px;
+            border-radius: 6px; border: none; cursor: pointer;
+        }
+        
+        /* 金额颜色样式 */
+        .expense { color: #dc3545; font-weight: 600; }
+        .reimburse { color: #800080; font-weight: 600; } /* 紫色 - 应报销金额 */
+        .balance { color: #28a745; font-weight: 600; }
+        .neutral { color: #495057; }
+        
+        /* 筛选区域 */
+        .filter-section { 
+            background: #e7f1ff; padding: 15px; border-radius: 8px; 
+            margin: 20px 0; display: flex; flex-wrap: wrap; gap: 15px;
+        }
+        .filter-group { 
+            display: flex; flex-direction: column; 
+            min-width: calc(25% - 20px);
+        }
+        
+        /* 统计信息 */
+        .stats-section { 
+            background: #f8f9fa; padding: 15px; border-radius: 8px;
+            margin-top: 20px; border: 1px solid #e9ecef;
+            font-weight: 500; display: flex; flex-wrap: wrap; gap: 20px;
+        }
+        .stat-item { flex: 1; min-width: 200px; }
+        
+        /* 详情弹窗优化 */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 10px;
+            width: 95%; max-width: 600px; max-height: 90vh;
+            overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 20px; padding-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .modal-title {
+            font-size: 1.4rem; font-weight: 600; color: #212529;
+        }
+        .detail-table {
+            width: 100%; border-collapse: collapse; margin-top: 15px;
+        }
+        .detail-table th, .detail-table td {
+            padding: 12px 15px; border-bottom: 1px solid #e9ecef;
+            color: #333; /* 黑色文字 */
+        }
+        .detail-table th {
+            background-color: #f1f3f5; font-weight: 600;
+            width: 40%; color: #333; /* 黑色表头文字 */
+        }
+        #detailModal .expense { color: #dc3545; } /* 红色 */
+        #detailModal .reimburse { color: #800080; } /* 紫色 */
+        #detailModal .balance { color: #28a745; } /* 绿色 */
+        
+        /* 费用明细表格 */
+        .expense-details {
+            background: white; padding: 20px; border-radius: 8px;
+            margin-top: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .expense-table {
+            width: 100%; border-collapse: collapse;
+        }
+        .expense-table th, .expense-table td {
+            padding: 12px 15px; text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .expense-table th {
+            background: #f8f9fa; font-weight: 600;
+        }
+        .expense-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .form-group { flex: 1 1 100%; }
+            .btn-group button { margin-bottom: 10px; }
+            th, td { padding: 12px 10px; font-size: 14px; }
+            .filter-group { min-width: 100%; }
+            .form-group { margin-bottom: 10px; }
+            .btn { padding: 14px 16px; font-size: 15px; }
+            .action-btn { padding: 6px 8px; font-size: 13px; }
+        }
+        
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            th, td { padding: 10px 8px; font-size: 12px; }
+            .action-cell { min-width: 120px; }
+            .btn { padding: 12px 14px; font-size: 14px; }
+            .filter-section { padding: 12px; gap: 10px; }
+            .modal-content { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>出差行程记录器</h1>
+        
+        <!-- 行程输入表单 -->
+        <section class="form-section">
+            <h2>行程信息录入</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">日期 *</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="departure">出发地 *</label>
+                    <input type="text" id="departure" required placeholder="例如：上海">
+                </div>
+                <div class="form-group">
+                    <label for="destination">目的地 *</label>
+                    <input type="text" id="destination" required placeholder="例如：北京">
+                </div>
+                <div class="form-group">
+                    <label for="purpose">出差事项 *</label>
+                    <input type="text" id="purpose" required placeholder="例如：客户会议">
+                </div>
+            </div>
+            
+            <h2>费用明细录入</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="distance">公里数(km) *</label>
+                    <input type="number" id="distance" min="0" step="0.1" required placeholder="例如：300">
+                </div>
+                <div class="form-group">
+                    <label for="reimbRate">报销额度(元/km)</label>
+                    <input type="number" id="reimbRate" min="0" step="0.01" value="1.8" placeholder="默认为1.8">
+                </div>
+                <div class="form-group">
+                    <label for="toll">高速费(元)</label>
+                    <input type="number" id="toll" min="0" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="fuelConsume">油耗(L/100km)</label>
+                    <input type="number" id="fuelConsume" min="0" step="0.01" value="0">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="fuelPrice">当前油价(元/L)</label>
+                    <input type="number" id="fuelPrice" min="0" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="hotel">酒店名称</label>
+                    <input type="text" id="hotel" placeholder="例如：XX大酒店">
+                </div>
+                <div class="form-group">
+                    <label for="hotelCost">酒店费用(元)</label>
+                    <input type="number" id="hotelCost" min="0" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="remarks">备注信息</label>
+                    <input type="text" id="remarks" placeholder="可添加任何额外说明">
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <button id="calcBtn" class="btn btn-calc">计算报销额度</button>
+                <button id="saveBtn" class="btn" disabled>保存行程记录</button>
+                <button id="clearBtn" class="btn btn-cancel">清空表单</button>
+            </div>
+            
+            <!-- 计算结果预览 - 详细费用信息 -->
+            <div class="expense-details" id="resultPreview" style="display:none">
+                <h3>费用明细</h3>
+                <table class="expense-table">
+                    <tr>
+                        <th>费用项目</th>
+                        <th>金额(元)</th>
+                    </tr>
+                    <tr>
+                        <td>里程报销 (公里数 × 报销额度)</td>
+                        <td id="distanceReimbResult">0.00</td>
+                    </tr>
+                    <tr>
+                        <td>高速费</td>
+                        <td id="tollResult">0.00</td>
+                    </tr>
+                    <tr>
+                        <td>油费 (油耗 × 公里数 × 油价)</td>
+                        <td id="fuelCostResult">0.00</td>
+                    </tr>
+                    <tr>
+                        <td>车费支出小计 (高速费 + 油费)</td>
+                        <td id="carCostResult" class="expense">0.00</td>
+                    </tr>
+                    <tr>
+                        <td>酒店费用</td>
+                        <td id="hotelReimbResult">0.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>应报销金额 (里程报销 + 酒店费用)</strong></td>
+                        <td id="reimbAmountResult" class="reimburse">0.00</td>
+                    </tr>
+                    <tr>
+                        <td><strong>结余金额 (里程报销 - 车费支出)</strong></td>
+                        <td id="balanceResult" class="balance">0.00</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+        
+        <!-- 筛选和批量操作区域 -->
+        <section class="filter-section">
+            <h2>记录筛选与操作</h2>
+            <div class="form-row">
+                <div class="filter-group">
+                    <label for="startDate">开始日期</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="filter-group">
+                    <label for="endDate">结束日期</label>
+                    <input type="date" id="endDate">
+                </div>
+                <div class="filter-group">
+                    <button id="filterBtn" class="btn">筛选记录</button>
+                </div>
+                <div class="filter-group">
+                    <button id="hotelBatchBtn" class="btn">批量设置酒店费用</button>
+                </div>
+                <div class="filter-group">
+                    <button id="resetBtn" class="btn btn-cancel">重置筛选</button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 行程记录展示 -->
+        <section class="table-section">
+            <h2>行程记录表</h2>
+            <div class="stats-section">
+                <div class="stat-item">
+                    记录总数: <span id="totalRecords">0</span>
+                </div>
+                <div class="stat-item">
+                    应报销总额: ￥<span id="totalReimbursable" class="reimburse">0.00</span>
+                </div>
+                <div class="stat-item">
+                    结余总额: ￥<span id="totalBalance" class="balance">0.00</span>
+                </div>
+            </div>
+            
+            <table id="recordsTable">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>出发地</th>
+                        <th>目的地</th>
+                        <th>出差事项</th>
+                        <th>公里数</th>
+                        <th>应报销</th>
+                        <th>结余</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody">
+                    <!-- 动态填充表格数据 -->
+                    <tr id="emptyRow" style="display:none">
+                        <td colspan="8" style="text-align:center; padding:30px;">
+                            暂无行程记录，请添加第一条行程
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <!-- 导出按钮 -->
+            <div class="btn-group">
+                <button id="exportWorkBtn" class="btn">导出工作模式CSV</button>
+                <button id="exportPersonalBtn" class="btn">导出个人模式CSV</button>
+            </div>
+        </section>
+    </div>
+    
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">编辑行程记录</h3>
+                <button id="closeEditModal" class="btn btn-cancel">×</button>
+            </div>
+            <div class="form-section" style="box-shadow:none; padding:0">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editDistance">公里数(km) *</label>
+                        <input type="number" id="editDistance" min="0" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editToll">高速费(元)</label>
+                        <input type="number" id="editToll" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editFuelConsume">油耗(L/100km)</label>
+                        <input type="number" id="editFuelConsume" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="editFuelPrice">当前油价(元/L)</label>
+                        <input type="number" id="editFuelPrice" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editHotel">酒店名称</label>
+                        <input type="text" id="editHotel">
+                    </div>
+                    <div class="form-group">
+                        <label for="editHotelCost">酒店费用(元)</label>
+                        <input type="number" id="editHotelCost" min="0" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="editRemarks">备注信息</label>
+                        <input type="text" id="editRemarks">
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="calcEditBtn" class="btn btn-calc">重新计算</button>
+                    <button id="updateRecordBtn" class="btn">保存修改</button>
+                    <button id="cancelEditBtn" class="btn btn-cancel">取消</button>
+                </div>
+                
+                <div class="expense-details" style="margin-top:20px">
+                    <h3>费用明细</h3>
+                    <table class="expense-table">
+                        <tr>
+                            <th>费用项目</th>
+                            <th>金额(元)</th>
+                        </tr>
+                        <tr>
+                            <td>里程报销</td>
+                            <td id="editDistanceReimb">0.00</td>
+                        </tr>
+                        <tr>
+                            <td>高速费</td>
+                            <td id="editTollResult">0.00</td>
+                        </tr>
+                        <tr>
+                            <td>油费</td>
+                            <td id="editFuelCostResult">0.00</td>
+                        </tr>
+                        <tr>
+                            <td>车费支出小计</td>
+                            <td id="editCarCost" class="expense">0.00</td>
+                        </tr>
+                        <tr>
+                            <td>酒店费用</td>
+                            <td id="editHotelReimb">0.00</td>
+                        </tr>
+                        <tr>
+                            <td><strong>应报销金额</strong></td>
+                            <td id="editReimbAmount" class="reimburse">0.00</td>
+                        </tr>
+                        <tr>
+                            <td><strong>结余金额</strong></td>
+                            <td id="editBalance" class="balance">0.00</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 详情弹窗 - 优化后显示更清晰 -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">行程详情</h3>
+                <button id="closeDetailModal" class="btn btn-cancel">×</button>
+            </div>
+            <table class="detail-table" id="detailTable">
+                <!-- 详情内容动态生成 -->
+            </table>
+            <div class="btn-group" style="margin-top:20px">
+                <button id="closeDetailBtn" class="btn btn-cancel">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据存储
+        let travelRecords = JSON.parse(localStorage.getItem('travelRecords')) || [];
+        let currentRecord = null;
+        let editingId = null;
+        
+        // DOM元素
+        const dom = {
+            recordsBody: document.getElementById('recordsBody'),
+            emptyRow: document.getElementById('emptyRow'),
+            calcBtn: document.getElementById('calcBtn'),
+            saveBtn: document.getElementById('saveBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+            filterBtn: document.getElementById('filterBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            exportWorkBtn: document.getElementById('exportWorkBtn'),
+            exportPersonalBtn: document.getElementById('exportPersonalBtn'),
+            hotelBatchBtn: document.getElementById('hotelBatchBtn'),
+            editModal: document.getElementById('editModal'),
+            detailModal: document.getElementById('detailModal'),
+            closeEditModal: document.getElementById('closeEditModal'),
+            cancelEditBtn: document.getElementById('cancelEditBtn'),
+            updateRecordBtn: document.getElementById('updateRecordBtn'),
+            calcEditBtn: document.getElementById('calcEditBtn'),
+            closeDetailModal: document.getElementById('closeDetailModal'),
+            closeDetailBtn: document.getElementById('closeDetailBtn'),
+            totalRecords: document.getElementById('totalRecords'),
+            totalReimbursable: document.getElementById('totalReimbursable'),
+            totalBalance: document.getElementById('totalBalance'),
+            resultPreview: document.getElementById('resultPreview'),
+            reimbAmountResult: document.getElementById('reimbAmountResult'),
+            carCostResult: document.getElementById('carCostResult'),
+            balanceResult: document.getElementById('balanceResult'),
+            tollResult: document.getElementById('tollResult'),
+            fuelCostResult: document.getElementById('fuelCostResult'),
+            distanceReimbResult: document.getElementById('distanceReimbResult'),
+            hotelReimbResult: document.getElementById('hotelReimbResult'),
+            editReimbAmount: document.getElementById('editReimbAmount'),
+            editCarCost: document.getElementById('editCarCost'),
+            editBalance: document.getElementById('editBalance'),
+            editDistanceReimb: document.getElementById('editDistanceReimb'),
+            editTollResult: document.getElementById('editTollResult'),
+            editFuelCostResult: document.getElementById('editFuelCostResult'),
+            editHotelReimb: document.getElementById('editHotelReimb'),
+            detailTable: document.getElementById('detailTable')
+        };
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable(travelRecords);
+            setupEventListeners();
+        });
+        
+        // 事件监听器
+        function setupEventListeners() {
+            dom.calcBtn.addEventListener('click', calculateFinancials);
+            dom.saveBtn.addEventListener('click', saveRecord);
+            dom.clearBtn.addEventListener('click', clearForm);
+            dom.filterBtn.addEventListener('click', filterRecords);
+            dom.resetBtn.addEventListener('click', resetFilter);
+            dom.exportWorkBtn.addEventListener('click', () => exportCSV('work'));
+            dom.exportPersonalBtn.addEventListener('click', () => exportCSV('personal'));
+            dom.hotelBatchBtn.addEventListener('click', batchHotelCost);
+            
+            // 编辑相关事件
+            dom.closeEditModal.addEventListener('click', closeEditModal);
+            dom.cancelEditBtn.addEventListener('click', closeEditModal);
+            dom.calcEditBtn.addEventListener('click', calculateEditFinancials);
+            dom.updateRecordBtn.addEventListener('click', updateRecord);
+            
+            // 详情相关事件
+            dom.closeDetailModal.addEventListener('click', closeDetailModal);
+            dom.closeDetailBtn.addEventListener('click', closeDetailModal);
+            
+            // 表格操作按钮事件委托
+            document.getElementById('recordsBody').addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-delete')) {
+                    const recordId = e.target.closest('tr').dataset.id;
+                    deleteRecord(recordId);
+                }
+                if (e.target.classList.contains('btn-edit')) {
+                    const recordId = e.target.closest('tr').dataset.id;
+                    openEditModal(recordId);
+                }
+                if (e.target.classList.contains('btn-detail')) {
+                    const recordId = e.target.closest('tr').dataset.id;
+                    openDetailModal(recordId);
+                }
+            });
+        }
+        
+        // 计算报销额度
+        function calculateFinancials() {
+            const record = getFormData();
+            if (!record.date || !record.departure || !record.destination || 
+                !record.purpose || !record.distance) {
+                alert('请填写必填字段：日期、出发地、目的地、出差事项和公里数');
+                return;
+            }
+            
+            // 油费计算
+            const fuelCost = record.fuelConsume * (record.distance / 100) * record.fuelPrice;
+            const carCost = parseFloat(record.toll) + fuelCost;
+            
+            // 酒店支出
+            const hotelExpense = parseFloat(record.hotelCost) || 0;
+            
+            // 应报销金额
+            const reimbRate = parseFloat(record.reimbRate || 1.8);
+            const distanceReimb = record.distance * reimbRate;
+            const reimbAmount = distanceReimb + hotelExpense;
+            
+            // 结余计算 (只考虑车费部分)
+            const balance = distanceReimb - carCost;
+            
+            // 显示详细计算结果
+            dom.distanceReimbResult.textContent = distanceReimb.toFixed(2);
+            dom.tollResult.textContent = record.toll.toFixed(2);
+            dom.fuelCostResult.textContent = fuelCost.toFixed(2);
+            dom.carCostResult.textContent = carCost.toFixed(2);
+            dom.hotelReimbResult.textContent = hotelExpense.toFixed(2);
+            dom.reimbAmountResult.textContent = reimbAmount.toFixed(2);
+            dom.balanceResult.textContent = balance.toFixed(2);
+            
+            dom.resultPreview.style.display = 'block';
+            dom.saveBtn.disabled = false;
+        }
+        
+        // 保存/更新记录
+        function saveRecord() {
+            const record = getFormData();
+            
+            // 计算财务数据
+            calculateFinancials();
+            
+            if (editingId !== null) {
+                // 更新现有记录
+                const index = travelRecords.findIndex(r => r.id === editingId);
+                if (index !== -1) {
+                    travelRecords[index] = {...record, id: editingId};
+                }
+                editingId = null;
+            } else {
+                // 添加新记录
+                travelRecords.push({...record, id: Date.now().toString()});
+            }
+            
+            saveToLocalStorage();
+            renderTable(travelRecords);
+            clearForm();
+        }
+        
+        // 获取表单数据
+        function getFormData() {
+            return {
+                date: document.getElementById('date').value,
+                departure: document.getElementById('departure').value,
+                destination: document.getElementById('destination').value,
+                purpose: document.getElementById('purpose').value,
+                distance: parseFloat(document.getElementById('distance').value) || 0,
+                reimbRate: parseFloat(document.getElementById('reimbRate').value) || 1.8,
+                toll: parseFloat(document.getElementById('toll').value) || 0,
+                fuelConsume: parseFloat(document.getElementById('fuelConsume').value) || 0,
+                fuelPrice: parseFloat(document.getElementById('fuelPrice').value) || 0,
+                hotel: document.getElementById('hotel').value,
+                hotelCost: parseFloat(document.getElementById('hotelCost').value) || 0,
+                remarks: document.getElementById('remarks').value
+            };
+        }
+        
+        // 清空表单
+        function clearForm() {
+            document.getElementById('date').value = '';
+            document.getElementById('departure').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('purpose').value = '';
+            document.getElementById('distance').value = '';
+            document.getElementById('reimbRate').value = '1.8';
+            document.getElementById('toll').value = '0';
+            document.getElementById('fuelConsume').value = '0';
+            document.getElementById('fuelPrice').value = '0';
+            document.getElementById('hotel').value = '';
+            document.getElementById('hotelCost').value = '0';
+            document.getElementById('remarks').value = '';
+            dom.resultPreview.style.display = 'none';
+            dom.saveBtn.disabled = true;
+            editingId = null;
+        }
+        
+        // 渲染表格
+        function renderTable(records) {
+            const tbody = document.getElementById('recordsBody');
+            tbody.innerHTML = '';
+            
+            if (records.length === 0) {
+                dom.emptyRow.style.display = '';
+                tbody.appendChild(dom.emptyRow.cloneNode(true));
+                dom.emptyRow.style.display = 'none';
+            } else {
+                dom.emptyRow.style.display = 'none';
+                
+                records.forEach(record => {
+                    // 计算财务数据
+                    const fuelCost = record.fuelConsume * (record.distance / 100) * record.fuelPrice;
+                    const carCost = record.toll + fuelCost;
+                    const distanceReimb = record.distance * record.reimbRate;
+                    const reimbAmount = distanceReimb + (record.hotelCost || 0);
+                    const balance = distanceReimb - carCost;
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.id = record.id;
+                    row.innerHTML = `
+                        <td>${record.date}</td>
+                        <td>${record.departure}</td>
+                        <td>${record.destination}</td>
+                        <td>${record.purpose}</td>
+                        <td>${record.distance.toFixed(1)} km</td>
+                        <td class="reimburse">￥${reimbAmount.toFixed(2)}</td>
+                        <td class="balance">￥${balance.toFixed(2)}</td>
+                        <td class="action-cell">
+                            <button class="btn btn-detail action-btn" style="background:#6f42c1; color:white">详情</button>
+                            <button class="btn btn-edit action-btn" style="background:#17a2b8; color:white">编辑</button>
+                            <button class="btn btn-delete action-btn" style="background:#dc3545; color:white">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            updateTotalStats();
+        }
+        
+        // 更新总计信息
+        function updateTotalStats() {
+            dom.totalRecords.textContent = travelRecords.length;
+            
+            let totalReimbursable = 0;
+            let totalBalance = 0;
+            
+            travelRecords.forEach(record => {
+                // 计算财务数据
+                const fuelCost = record.fuelConsume * (record.distance / 100) * record.fuelPrice;
+                const carCost = record.toll + fuelCost;
+                const distanceReimb = record.distance * record.reimbRate;
+                const reimbAmount = distanceReimb + (record.hotelCost || 0);
+                const balance = distanceReimb - carCost;
+                
+                totalReimbursable += reimbAmount;
+                totalBalance += balance;
+            });
+            
+            dom.totalReimbursable.textContent = totalReimbursable.toFixed(2);
+            dom.totalBalance.textContent = totalBalance.toFixed(2);
+        }
+        
+        // 删除记录
+        function deleteRecord(recordId) {
+            // 直接删除，无需确认
+            travelRecords = travelRecords.filter(record => record.id !== recordId);
+            saveToLocalStorage();
+            renderTable(travelRecords);
+        }
+        
+        // 打开编辑模态框
+        function openEditModal(recordId) {
+            const record = travelRecords.find(r => r.id === recordId);
+            if (!record) return;
+            
+            currentRecord = record;
+            editingId = recordId;
+            
+            // 填充表单数据
+            document.getElementById('editDistance').value = record.distance;
+            document.getElementById('editToll').value = record.toll;
+            document.getElementById('editFuelConsume').value = record.fuelConsume;
+            document.getElementById('editFuelPrice').value = record.fuelPrice;
+            document.getElementById('editHotel').value = record.hotel || '';
+            document.getElementById('editHotelCost').value = record.hotelCost || 0;
+            document.getElementById('editRemarks').value = record.remarks || '';
+            
+            // 显示初始计算结果
+            calculateEditFinancials();
+            
+            // 显示模态框
+            dom.editModal.style.display = 'flex';
+        }
+        
+        // 计算编辑表单的财务数据
+        function calculateEditFinancials() {
+            const distance = parseFloat(document.getElementById('editDistance').value) || 0;
+            const toll = parseFloat(document.getElementById('editToll').value) || 0;
+            const fuelConsume = parseFloat(document.getElementById('editFuelConsume').value) || 0;
+            const fuelPrice = parseFloat(document.getElementById('editFuelPrice').value) || 0;
+            const hotelCost = parseFloat(document.getElementById('editHotelCost').value) || 0;
+            
+            // 使用原记录的报销额度
+            const reimbRate = currentRecord.reimbRate || 1.8;
+            
+            // 油费计算
+            const fuelCost = fuelConsume * (distance / 100) * fuelPrice;
+            const carCost = toll + fuelCost;
+            
+            // 应报销金额
+            const distanceReimb = distance * reimbRate;
+            const reimbAmount = distanceReimb + hotelCost;
+            
+            // 结余计算 (只考虑车费部分)
+            const balance = distanceReimb - carCost;
+            
+            // 显示计算结果
+            dom.editDistanceReimb.textContent = distanceReimb.toFixed(2);
+            dom.editTollResult.textContent = toll.toFixed(2);
+            dom.editFuelCostResult.textContent = fuelCost.toFixed(2);
+            dom.editCarCost.textContent = carCost.toFixed(2);
+            dom.editHotelReimb.textContent = hotelCost.toFixed(2);
+            dom.editReimbAmount.textContent = reimbAmount.toFixed(2);
+            dom.editBalance.textContent = balance.toFixed(2);
+        }
+        
+        // 更新记录
+        function updateRecord() {
+            if (!currentRecord) return;
+            
+            // 获取编辑后的值
+            currentRecord.distance = parseFloat(document.getElementById('editDistance').value) || 0;
+            currentRecord.toll = parseFloat(document.getElementById('editToll').value) || 0;
+            currentRecord.fuelConsume = parseFloat(document.getElementById('editFuelConsume').value) || 0;
+            currentRecord.fuelPrice = parseFloat(document.getElementById('editFuelPrice').value) || 0;
+            currentRecord.hotel = document.getElementById('editHotel').value;
+            currentRecord.hotelCost = parseFloat(document.getElementById('editHotelCost').value) || 0;
+            currentRecord.remarks = document.getElementById('editRemarks').value;
+            
+            saveToLocalStorage();
+            renderTable(travelRecords);
+            closeEditModal();
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            dom.editModal.style.display = 'none';
+            currentRecord = null;
+            editingId = null;
+        }
+        
+        // 打开详情模态框 - 优化后显示更清晰
+        function openDetailModal(recordId) {
+            const record = travelRecords.find(r => r.id === recordId);
+            if (!record) return;
+            
+            // 计算财务数据
+            const fuelCost = record.fuelConsume * (record.distance / 100) * record.fuelPrice;
+            const carCost = record.toll + fuelCost;
+            const distanceReimb = record.distance * record.reimbRate;
+            const reimbAmount = distanceReimb + (record.hotelCost || 0);
+            const balance = distanceReimb - carCost;
+            const actualCost = carCost + (record.hotelCost || 0);
+            
+            // 生成详情内容 - 优化后更清晰
+            const detailTable = document.getElementById('detailTable');
+            detailTable.innerHTML = `
+                <tr>
+                    <th>日期</th>
+                    <td>${record.date}</td>
+                </tr>
+                <tr>
+                    <th>出发地</th>
+                    <td>${record.departure}</td>
+                </tr>
+                <tr>
+                    <th>目的地</th>
+                    <td>${record.destination}</td>
+                </tr>
+                <tr>
+                    <th>出差事项</th>
+                    <td>${record.purpose}</td>
+                </tr>
+                <tr>
+                    <th>公里数</th>
+                    <td>${record.distance.toFixed(1)} km</td>
+                </tr>
+                <tr>
+                    <th>报销额度</th>
+                    <td>￥${record.reimbRate.toFixed(2)} /km</td>
+                </tr>
+                <tr>
+                    <th>高速费</th>
+                    <td>￥${record.toll.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>油耗</th>
+                    <td>${record.fuelConsume.toFixed(2)} L/100km</td>
+                </tr>
+                <tr>
+                    <th>油价</th>
+                    <td>￥${record.fuelPrice.toFixed(2)}/L</td>
+                </tr>
+                <tr>
+                    <th>油费</th>
+                    <td>￥${fuelCost.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>酒店名称</th>
+                    <td>${record.hotel || '无'}</td>
+                </tr>
+                <tr>
+                    <th>酒店费用</th>
+                    <td>￥${record.hotelCost.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>里程报销</th>
+                    <td>￥${distanceReimb.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>车费支出</th>
+                    <td class="expense">￥${carCost.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>实际支出</th>
+                    <td class="expense">￥${actualCost.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>应报销金额</th>
+                    <td class="reimburse">￥${reimbAmount.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>结余金额</th>
+                    <td class="balance">￥${balance.toFixed(2)}</td>
+                </tr>
+                <tr>
+                    <th>备注</th>
+                    <td>${record.remarks || '无'}</td>
+                </tr>
+            `;
+            
+            // 显示模态框
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+        
+        // 关闭详情模态框
+        function closeDetailModal() {
+            dom.detailModal.style.display = 'none';
+        }
+        
+        // 保存到本地存储
+        function saveToLocalStorage() {
+            localStorage.setItem('travelRecords', JSON.stringify(travelRecords));
+            updateTotalStats();
+        }
+        
+        // 筛选记录
+        function filterRecords() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate && !endDate) {
+                renderTable(travelRecords);
+                return;
+            }
+            
+            const filtered = travelRecords.filter(record => {
+                const recordDate = new Date(record.date);
+                if (startDate) {
+                    const start = new Date(startDate);
+                    if (recordDate < start) return false;
+                }
+                if (endDate) {
+                    const end = new Date(endDate);
+                    if (recordDate > end) return false;
+                }
+                return true;
+            });
+            
+            renderTable(filtered);
+        }
+        
+        // 重置筛选
+        function resetFilter() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            renderTable(travelRecords);
+        }
+        
+        // 批量设置酒店费用
+        function batchHotelCost() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (!startDate && !endDate) {
+                alert('请先设置日期范围筛选出需要批量操作的记录');
+                return;
+            }
+            
+            const hotelName = prompt('请输入酒店名称（可选）:');
+            const totalCost = parseFloat(prompt('请输入酒店总费用:') || '0');
+            
+            if (isNaN(totalCost) || totalCost <= 0) {
+                alert('请输入有效的总费用金额');
+                return;
+            }
+            
+            const filtered = travelRecords.filter(record => {
+                const recordDate = new Date(record.date);
+                if (startDate) {
+                    const start = new Date(startDate);
+                    if (recordDate < start) return false;
+                }
+                if (endDate) {
+                    const end = new Date(endDate);
+                    if (recordDate > end) return false;
+                }
+                return true;
+            });
+            
+            if (filtered.length === 0) {
+                alert('筛选范围内没有记录');
+                return;
+            }
+            
+            const costPerRecord = totalCost / filtered.length;
+            
+            filtered.forEach(record => {
+                record.hotel = hotelName || record.hotel;
+                record.hotelCost = costPerRecord;
+            });
+            
+            saveToLocalStorage();
+            renderTable(travelRecords);
+            alert(`成功更新 ${filtered.length} 条记录的酒店费用，平均分摊费用为￥${costPerRecord.toFixed(2)}`);
+        }
+        
+        // 导出为CSV
+        function exportCSV(mode) {
+            if (travelRecords.length === 0) {
+                alert('没有可导出的记录');
+                return;
+            }
+            
+            let csvContent = '';
+            
+            if (mode === 'work') {
+                // 工作模式导出
+                csvContent = '日期,出发地,目的地,出差事项,公里数,报销额度(元/km),酒店名称,酒店费用,总应报销额度,备注\n';
+                
+                travelRecords.forEach(record => {
+                    const reimbAmount = (record.distance * record.reimbRate) + (record.hotelCost || 0);
+                    
+                    csvContent += `"${record.date}","${record.departure}","${record.destination}","${record.purpose}",${record.distance},${record.reimbRate},"${record.hotel}",${record.hotelCost || 0},${reimbAmount},"${record.remarks || ''}"\n`;
+                });
+            } else {
+                // 个人模式导出
+                csvContent = '日期,出发地,目的地,出差事项,公里数,报销额度(元/km),高速费,油耗,油价,油费,酒店名称,酒店费用,总应报销金额,车费支出,实际支出,结余\n';
+                
+                travelRecords.forEach(record => {
+                    const fuelCost = record.fuelConsume * (record.distance / 100) * record.fuelPrice;
+                    const carCost = record.toll + fuelCost;
+                    const reimbAmount = (record.distance * record.reimbRate) + (record.hotelCost || 0);
+                    const balance = (record.distance * record.reimbRate) - carCost;
+                    const actualCost = carCost + (record.hotelCost || 0);
+                    
+                    csvContent += `"${record.date}","${record.departure}","${record.destination}","${record.purpose}",${record.distance},${record.reimbRate},${record.toll},${record.fuelConsume},${record.fuelPrice},${fuelCost},"${record.hotel}",${record.hotelCost || 0},${reimbAmount},${carCost},${actualCost},${balance}\n`;
+                });
+            }
+            
+            // 创建下载链接
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `出差行程记录_${mode === 'work' ? '工作模式' : '个人模式'}_${new Date().toISOString().slice(0, 10)}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
